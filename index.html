@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f3f1e9">
+  <title>Trang giấy — PDF & Trình chiếu</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f3f1e9;
+      --ink: #242a25;
+      --muted: #73766e;
+      --line: #d8d6cc;
+      --green: #245c49;
+      --coral: #c65e48;
+      --panel: #fbfaf6;
+      --shadow: 0 18px 50px #242a251c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "DM Sans", sans-serif;
+    }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    .shell { min-height: 100vh; display: flex; flex-direction: column; }
+    .topbar {
+      min-height: 76px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 14px clamp(18px, 4vw, 58px);
+      border-bottom: 1px solid var(--line);
+      background: #f8f7f1;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .brand-mark {
+      width: 38px; height: 38px; display: grid; place-items: center;
+      border-radius: 50%; background: var(--green); color: white;
+      font: 700 17px "Playfair Display", serif;
+    }
+    .brand-name { font: 700 20px "Playfair Display", serif; letter-spacing: 0; }
+    .brand-note { margin-top: 2px; color: var(--muted); font: 11px "DM Mono", monospace; }
+    .toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .button {
+      min-height: 38px; padding: 0 13px; display: inline-flex; gap: 8px;
+      align-items: center; justify-content: center; border: 1px solid var(--line);
+      border-radius: 5px; background: var(--panel); cursor: pointer;
+      transition: background .18s ease, transform .18s ease, border-color .18s ease;
+    }
+    .button:hover { background: white; border-color: #9c9b90; transform: translateY(-1px); }
+    .button:focus-visible { outline: 3px solid #c65e4870; outline-offset: 2px; }
+    .button.primary { border-color: var(--green); background: var(--green); color: white; }
+    .button.primary:hover { background: #194b39; }
+    .button.icon { width: 38px; padding: 0; font-size: 19px; }
+    .button:disabled { opacity: .42; cursor: not-allowed; transform: none; }
+    [hidden] { display: none !important; }
+    .file-input { display: none; }
+    .content { width: min(1120px, 100%); margin: 0 auto; padding: 26px clamp(16px, 4vw, 48px) 34px; flex: 1; display: flex; flex-direction: column; }
+    .meta-row { min-height: 36px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--muted); font: 12px "DM Mono", monospace; }
+    .file-label { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .stage {
+      position: relative; flex: 1; min-height: 360px; display: grid; place-items: center;
+      overflow: hidden; border: 1px solid var(--line); border-radius: 7px;
+      background-color: #e8e6dd;
+      background-image: radial-gradient(#8d908722 .8px, transparent .8px);
+      background-size: 13px 13px;
+      box-shadow: inset 0 1px 5px #242a2508;
+    }
+    .stage.dragging { outline: 3px solid var(--coral); outline-offset: -5px; background-color: #f0e2d9; }
+    .empty {
+      width: min(430px, calc(100% - 32px)); padding: 36px 22px; text-align: center;
+      animation: arrive .45s ease both;
+    }
+    .empty-symbol { width: 72px; height: 72px; margin: 0 auto 20px; display: grid; place-items: center; border: 1px solid #c8c6ba; border-radius: 50%; color: var(--green); font: 34px "Playfair Display", serif; }
+    .empty h1 { margin: 0 0 10px; font: 600 clamp(25px, 4vw, 34px) "Playfair Display", serif; }
+    .empty p { margin: 0 auto 22px; max-width: 330px; color: var(--muted); line-height: 1.65; font-size: 14px; }
+    .formats { margin-top: 15px; color: #85867d; font: 10px "DM Mono", monospace; }
+    .mode-chooser { width: min(760px, calc(100% - 32px)); padding: 36px 0; text-align: center; animation: arrive .45s ease both; }
+    .mode-chooser .eyebrow { margin-bottom: 10px; color: var(--coral); font: 11px "DM Mono", monospace; }
+    .mode-chooser h1 { margin: 0 0 12px; font: 600 clamp(27px, 4vw, 38px) "Playfair Display", serif; }
+    .mode-chooser > p { margin: 0 auto 28px; max-width: 460px; color: var(--muted); line-height: 1.65; font-size: 14px; }
+    .mode-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; text-align: left; }
+    .mode-option { min-height: 188px; padding: 22px; display: flex; flex-direction: column; align-items: flex-start; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); text-align: left; cursor: pointer; transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease; }
+    .mode-option:hover { transform: translateY(-2px); border-color: var(--green); box-shadow: var(--shadow); }
+    .mode-option:focus-visible { outline: 3px solid #c65e4870; outline-offset: 2px; }
+    .mode-icon { color: var(--green); font: 30px "Playfair Display", serif; }
+    .mode-option strong { margin-top: 13px; font: 600 19px "Playfair Display", serif; }
+    .mode-option span:last-child { margin-top: 6px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .backup-note { color: var(--muted); font-size: 11px; }
+    .pdf-frame { width: 100%; height: 100%; min-height: 420px; border: 0; background: white; }
+    .pdf-page { max-width: 100%; max-height: 100%; overflow: auto; display: grid; place-items: start center; padding: 22px; }
+    #pdfCanvas { max-width: 100%; height: auto; background: white; box-shadow: var(--shadow); }
+    .slide-image { display: block; max-width: calc(100% - 44px); max-height: calc(100% - 44px); object-fit: contain; box-shadow: var(--shadow); animation: arrive .25s ease both; }
+    .stage-controls { position: absolute; inset: auto 14px 14px; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+    .control-group { display: flex; align-items: center; gap: 7px; padding: 6px; border: 1px solid #d4d1c6; border-radius: 6px; background: #fbfaf6ed; box-shadow: 0 5px 18px #242a2518; pointer-events: auto; backdrop-filter: blur(8px); }
+    .counter { min-width: 78px; text-align: center; color: var(--muted); font: 11px "DM Mono", monospace; }
+    .bottomline { min-height: 38px; display: flex; align-items: end; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 11px; }
+    .bottomline kbd { padding: 2px 5px; border: 1px solid var(--line); border-radius: 3px; background: #faf9f4; font: 10px "DM Mono", monospace; }
+    .toast { position: fixed; z-index: 3; left: 50%; bottom: 24px; transform: translate(-50%, 12px); padding: 11px 16px; border-radius: 5px; background: var(--ink); color: white; font-size: 13px; opacity: 0; pointer-events: none; transition: .2s ease; }
+    .toast.visible { opacity: 1; transform: translate(-50%, 0); }
+    .presentation .topbar, .presentation .meta-row, .presentation .bottomline { display: none; }
+    .presentation .content { width: 100%; padding: 0; }
+    .presentation .stage { min-height: 100vh; border: 0; border-radius: 0; background: #171a17; background-image: none; }
+    .presentation .slide-image {
+      width: min(100vw, 177.7778vh);
+      height: min(100vh, 56.25vw);
+      max-width: none;
+      max-height: none;
+      object-fit: contain;
+    }
+    .presentation .stage-controls { bottom: 22px; opacity: 0; transition: opacity .2s ease; }
+    .presentation .stage:hover .stage-controls, .presentation .stage-controls:focus-within { opacity: 1; }
+    @keyframes arrive { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 620px) {
+      .topbar { align-items: flex-start; padding: 13px 15px; }
+      .brand-note { display: none; }
+      .brand-name { font-size: 17px; }
+      .toolbar { gap: 6px; }
+      .button { min-height: 36px; padding: 0 10px; font-size: 13px; }
+      .button.icon { width: 36px; }
+      .content { padding: 15px 12px 20px; }
+      .stage { min-height: 55vh; }
+      .mode-options { grid-template-columns: 1fr; gap: 10px; }
+      .mode-option { min-height: 145px; padding: 17px; }
+      .mode-icon { font-size: 25px; }
+      .mode-option strong { margin-top: 8px; }
+      .bottomline { align-items: center; font-size: 10px; }
+      .bottomline .hint { max-width: 56%; line-height: 1.7; }
+      .pdf-page { padding: 10px; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <div class="shell" id="app">
+    <header class="topbar">
+      <div class="brand" aria-label="Trang giấy">
+        <div class="brand-mark" aria-hidden="true">T</div>
+        <div><div class="brand-name">Trang giấy</div><div class="brand-note">PDF READER · IMAGE DECK</div></div>
+      </div>
+      <div class="toolbar">
+        <button class="button" id="modeButton" type="button" title="Chọn loại nội dung khác" hidden>⇄ <span>Đổi chế độ</span></button>
+        <button class="button" id="openButton" type="button" title="Chọn tệp" hidden>＋ <span>Mở tệp</span></button>
+        <button class="button" id="addSlideButton" type="button" title="Thêm trang trình chiếu" aria-label="Thêm trang trình chiếu" hidden>＋ <span>Thêm trang</span></button>
+        <button class="button" id="backupButton" type="button" title="Tải bản sao lưu" hidden disabled>↓ <span>Tải bản sao lưu</span></button>
+        <button class="button primary" id="presentButton" type="button" title="Bắt đầu trình chiếu ảnh" hidden disabled>▷ <span>Trình chiếu</span></button>
+        <input class="file-input" id="fileInput" type="file" multiple>
+        <input class="file-input" id="addImagesInput" type="file" accept="image/*" multiple>
+      </div>
+    </header>
+    <main class="content">
+      <div class="meta-row"><span class="file-label" id="fileLabel">CHƯA CÓ TỆP</span><span id="modeLabel">SẴN SÀNG</span></div>
+      <section class="stage" id="stage" aria-label="Khu vực xem tài liệu">
+        <div class="mode-chooser" id="modeChooser">
+          <div class="eyebrow">KHÔNG GIAN ĐỌC CỦA BẠN</div>
+          <h1>Bạn muốn mở nội dung nào?</h1>
+          <p>Chọn cách sử dụng trước. Bạn có thể kéo thả tệp hoặc chọn trực tiếp từ thiết bị ở bước tiếp theo.</p>
+          <div class="mode-options">
+            <button class="mode-option" id="choosePdfButton" type="button">
+              <span class="mode-icon" aria-hidden="true">▤</span>
+              <strong>Đọc PDF</strong>
+              <span>Xem từng trang, phóng to và điều chỉnh vừa chiều rộng.</span>
+            </button>
+            <button class="mode-option" id="chooseSlidesButton" type="button">
+              <span class="mode-icon" aria-hidden="true">▧</span>
+              <strong>Trình chiếu ảnh</strong>
+              <span>Gom tối đa 100 ảnh thành bộ trình chiếu toàn màn hình.</span>
+            </button>
+          </div>
+        </div>
+        <div class="empty" id="emptyState" hidden>
+          <div class="empty-symbol" aria-hidden="true">↧</div>
+          <h1 id="emptyTitle">Kéo tệp vào đây</h1>
+          <p id="emptyDescription">Hoặc chọn tệp từ thiết bị để bắt đầu.</p>
+          <button class="button primary" id="emptyOpenButton" type="button">Chọn tệp từ thiết bị</button>
+          <div class="formats" id="formatLabel"></div>
+        </div>
+      </section>
+      <div class="bottomline"><span class="hint">Phím tắt: <kbd>←</kbd> <kbd>→</kbd> đổi trang / ảnh · <kbd>F</kbd> toàn màn hình · <kbd>Esc</kbd> thoát</span><span id="statusText">Tệp được xử lý ngay trên thiết bị</span></div>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>
+    (() => {
+      const app = document.getElementById('app');
+      const stage = document.getElementById('stage');
+      const fileInput = document.getElementById('fileInput');
+      const modeChooser = document.getElementById('modeChooser');
+      const emptyState = document.getElementById('emptyState');
+      const emptyTitle = document.getElementById('emptyTitle');
+      const emptyDescription = document.getElementById('emptyDescription');
+      const formatLabel = document.getElementById('formatLabel');
+      const fileLabel = document.getElementById('fileLabel');
+      const modeLabel = document.getElementById('modeLabel');
+      const openButton = document.getElementById('openButton');
+      const modeButton = document.getElementById('modeButton');
+      const addSlideButton = document.getElementById('addSlideButton');
+      const addImagesInput = document.getElementById('addImagesInput');
+      const backupButton = document.getElementById('backupButton');
+      const presentButton = document.getElementById('presentButton');
+      const statusText = document.getElementById('statusText');
+      const toast = document.getElementById('toast');
+      let images = [];
+      let imageUrls = [];
+      let sourceFiles = [];
+      let selectedMode = null;
+      let slideIndex = 0;
+      let pdfDocument = null;
+      let pdfPage = 1;
+      let pdfScale = 1.15;
+      let toastTimer;
+      let renderToken = 0;
+
+      if (window.pdfjsLib) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      }
+
+      function notify(message) {
+        toast.textContent = message;
+        toast.classList.add('visible');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove('visible'), 2600);
+      }
+
+      function clearDocument() {
+        renderToken++;
+        imageUrls.forEach(URL.revokeObjectURL);
+        imageUrls = [];
+        images = [];
+        sourceFiles = [];
+        pdfDocument = null;
+        stage.replaceChildren();
+        fileLabel.textContent = 'CHƯA CÓ TỆP';
+        fileLabel.removeAttribute('title');
+        modeLabel.textContent = selectedMode ? (selectedMode === 'pdf' ? 'CHẾ ĐỘ PDF' : 'CHẾ ĐỘ TRÌNH CHIẾU') : 'CHỌN CHẾ ĐỘ';
+        statusText.textContent = 'Tệp được xử lý ngay trên thiết bị';
+        presentButton.disabled = true;
+        presentButton.hidden = selectedMode !== 'images';
+        openButton.hidden = !selectedMode;
+        modeButton.hidden = !selectedMode;
+        addSlideButton.hidden = selectedMode !== 'images';
+        addSlideButton.disabled = false;
+        backupButton.hidden = true;
+        backupButton.disabled = true;
+        app.classList.remove('presentation');
+        if (selectedMode) {
+          modeChooser.hidden = true;
+          emptyState.hidden = false;
+          const isPdf = selectedMode === 'pdf';
+          emptyTitle.textContent = isPdf ? 'Kéo tệp PDF vào đây' : 'Kéo ảnh vào đây';
+          emptyDescription.textContent = isPdf ? 'Hoặc chọn một tệp PDF từ thiết bị để đọc.' : 'Chọn một hoặc nhiều ảnh để tạo bộ trình chiếu.';
+          formatLabel.textContent = isPdf ? 'PDF' : 'JPG · PNG · WEBP · GIF · TỐI ĐA 100 ẢNH';
+          fileInput.accept = isPdf ? '.pdf,application/pdf' : 'image/*';
+          fileInput.multiple = !isPdf;
+          stage.append(emptyState);
+        } else {
+          modeChooser.hidden = false;
+          emptyState.hidden = true;
+          stage.append(modeChooser);
+        }
+      }
+
+      function chooseMode(mode) {
+        selectedMode = mode;
+        clearDocument();
+      }
+
+      function setHeader(name, mode) {
+        fileLabel.textContent = name.toLocaleUpperCase('vi');
+        fileLabel.title = name;
+        modeLabel.textContent = mode;
+        emptyState.hidden = true;
+      }
+
+      function makeControls(kind) {
+        const controls = document.createElement('div');
+        controls.className = 'stage-controls';
+        const group = document.createElement('div');
+        group.className = 'control-group';
+        controls.append(group);
+        if (kind === 'image') {
+          const previous = controlButton('‹', 'Ảnh trước', () => showSlide(slideIndex - 1));
+          const counter = document.createElement('span');
+          counter.className = 'counter';
+          counter.id = 'slideCounter';
+          const next = controlButton('›', 'Ảnh tiếp theo', () => showSlide(slideIndex + 1));
+          const play = controlButton('▶', 'Trình chiếu', startPresentation);
+          const add = controlButton('+', 'Thêm trang trình chiếu', () => addImagesInput.click());
+          add.disabled = images.length >= 100;
+          group.append(previous, counter, next, add, play);
+        } else {
+          const previous = controlButton('‹', 'Trang trước', () => renderPdfPage(pdfPage - 1));
+          const counter = document.createElement('span');
+          counter.className = 'counter';
+          counter.id = 'pdfCounter';
+          const next = controlButton('›', 'Trang tiếp theo', () => renderPdfPage(pdfPage + 1));
+          const zoomOut = controlButton('−', 'Thu nhỏ', () => changeZoom(-0.2));
+          const zoomIn = controlButton('+', 'Phóng to', () => changeZoom(0.2));
+          const fit = controlButton('↔', 'Vừa chiều rộng', fitPdfWidth);
+          group.append(previous, counter, next, zoomOut, zoomIn, fit);
+        }
+        return controls;
+      }
+
+      function controlButton(label, title, action) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'button icon';
+        button.textContent = label;
+        button.title = title;
+        button.setAttribute('aria-label', title);
+        button.addEventListener('click', action);
+        return button;
+      }
+
+      function showSlide(index) {
+        if (!images.length) return;
+        slideIndex = (index + images.length) % images.length;
+        const current = images[slideIndex];
+        stage.replaceChildren();
+        const image = document.createElement('img');
+        image.className = 'slide-image';
+        image.src = current.url;
+        image.alt = current.name;
+        image.draggable = false;
+        const controls = makeControls('image');
+        stage.append(image, controls);
+        document.getElementById('slideCounter').textContent = `${slideIndex + 1} / ${images.length}`;
+      }
+
+      async function openImages(files) {
+        const selectedImages = files.slice(0, 100);
+        sourceFiles = selectedImages;
+        images = selectedImages.map(file => {
+          const url = URL.createObjectURL(file);
+          imageUrls.push(url);
+          return { name: file.name, url };
+        });
+        slideIndex = 0;
+        presentButton.disabled = false;
+        setHeader(`${images.length} ảnh · ${images[0].name}`, 'BỘ ẢNH');
+        statusText.textContent = 'Dùng phím mũi tên để chuyển ảnh';
+        backupButton.hidden = false;
+        backupButton.disabled = false;
+        showSlide(0);
+        if (files.length > selectedImages.length) {
+          notify(`Đã thêm 100 ảnh đầu tiên. Giới hạn trình chiếu là 100 ảnh.`);
+        }
+        updateAddSlideAvailability();
+      }
+
+      function addImages(files) {
+        const remaining = Math.max(0, 100 - images.length);
+        if (remaining === 0) {
+          notify('Trình chiếu đã đạt giới hạn 100 ảnh.');
+          return;
+        }
+        const selectedImages = files.slice(0, remaining);
+        selectedImages.forEach(file => {
+          const url = URL.createObjectURL(file);
+          imageUrls.push(url);
+          images.push({ name: file.name, url });
+          sourceFiles.push(file);
+        });
+        if (selectedImages.length) {
+          slideIndex = images.length - selectedImages.length;
+          setHeader(`${images.length} ảnh · ${images[0].name}`, 'BỘ ẢNH');
+          statusText.textContent = 'Dùng phím mũi tên để chuyển ảnh';
+          backupButton.hidden = false;
+          backupButton.disabled = false;
+          showSlide(slideIndex);
+        }
+        if (files.length > selectedImages.length) {
+          notify(`Đã thêm ${selectedImages.length} ảnh. Trình chiếu đã đạt giới hạn 100 ảnh.`);
+        }
+        updateAddSlideAvailability();
+      }
+
+      function updateAddSlideAvailability() {
+        const atLimit = images.length >= 100;
+        addSlideButton.disabled = atLimit;
+        const slideAddButton = stage.querySelector('[aria-label="Thêm trang trình chiếu"]');
+        if (slideAddButton) slideAddButton.disabled = atLimit;
+      }
+
+      async function openPdf(file) {
+        if (!window.pdfjsLib) {
+          notify('Không tải được PDF.js. Kiểm tra kết nối mạng rồi thử lại.');
+          return;
+        }
+        setHeader(file.name, 'TÀI LIỆU PDF');
+        modeLabel.textContent = 'ĐANG MỞ PDF';
+        statusText.textContent = 'Đang tải tài liệu…';
+        try {
+          const bytes = await file.arrayBuffer();
+          pdfDocument = await pdfjsLib.getDocument({ data: bytes }).promise;
+          pdfPage = 1;
+          pdfScale = 1.15;
+          presentButton.disabled = true;
+          backupButton.hidden = false;
+          backupButton.disabled = false;
+          await renderPdfPage(1);
+          statusText.textContent = `${pdfDocument.numPages} trang · Điều hướng bằng phím mũi tên`;
+        } catch (error) {
+          console.error(error);
+          clearDocument();
+          notify('Không thể mở PDF này. Hãy thử một tệp PDF khác.');
+        }
+      }
+
+      async function renderPdfPage(pageNumber) {
+        if (!pdfDocument) return;
+        pdfPage = Math.max(1, Math.min(pdfDocument.numPages, pageNumber));
+        const token = ++renderToken;
+        try {
+          const page = await pdfDocument.getPage(pdfPage);
+          if (token !== renderToken) return;
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d', { alpha: false });
+          const viewport = page.getViewport({ scale: pdfScale * Math.min(window.devicePixelRatio || 1, 2) });
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          canvas.id = 'pdfCanvas';
+          const frame = page.getViewport({ scale: pdfScale });
+          canvas.style.width = `${frame.width}px`;
+          canvas.style.height = `${frame.height}px`;
+          stage.replaceChildren();
+          const pageWrap = document.createElement('div');
+          pageWrap.className = 'pdf-page';
+          pageWrap.append(canvas);
+          const controls = makeControls('pdf');
+          stage.append(pageWrap, controls);
+          await page.render({ canvasContext: context, viewport }).promise;
+          const counter = document.getElementById('pdfCounter');
+          if (counter) counter.textContent = `${pdfPage} / ${pdfDocument.numPages}`;
+        } catch (error) {
+          if (error?.name !== 'RenderingCancelledException') console.error(error);
+        }
+      }
+
+      function changeZoom(amount) {
+        pdfScale = Math.max(0.5, Math.min(3, pdfScale + amount));
+        renderPdfPage(pdfPage);
+      }
+
+      async function fitPdfWidth() {
+        if (!pdfDocument) return;
+        const page = await pdfDocument.getPage(pdfPage);
+        const base = page.getViewport({ scale: 1 });
+        pdfScale = Math.max(0.5, Math.min(3, (stage.clientWidth - 48) / base.width));
+        renderPdfPage(pdfPage);
+      }
+
+      async function startPresentation() {
+        if (!images.length) return;
+        app.classList.add('presentation');
+        try {
+          if (!document.fullscreenElement) await app.requestFullscreen();
+        } catch (error) {
+          console.warn('Fullscreen is unavailable:', error);
+        }
+        showSlide(slideIndex);
+      }
+
+      function exitPresentation() {
+        app.classList.remove('presentation');
+        if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      }
+
+      function triggerDownload(blob, name) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = name;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+
+      async function downloadBackup() {
+        if (!sourceFiles.length) return;
+        if (selectedMode === 'pdf') {
+          const file = sourceFiles[0];
+          triggerDownload(file, file.name);
+          return;
+        }
+        if (!window.JSZip) {
+          notify('Không tải được công cụ tạo ZIP. Kiểm tra kết nối mạng rồi thử lại.');
+          return;
+        }
+        backupButton.disabled = true;
+        backupButton.querySelector('span').textContent = 'Đang tạo ZIP…';
+        try {
+          const zip = new JSZip();
+          sourceFiles.forEach((file, index) => {
+            const number = String(index + 1).padStart(3, '0');
+            zip.file(`${number}-${file.name}`, file);
+          });
+          const archive = await zip.generateAsync({ type: 'blob' });
+          triggerDownload(archive, `trang-giay-sao-luu-${new Date().toISOString().slice(0, 10)}.zip`);
+          notify(`Đã tạo bản sao lưu gồm ${sourceFiles.length} ảnh.`);
+        } catch (error) {
+          console.error(error);
+          notify('Tạo bản sao lưu không thành công.');
+        } finally {
+          backupButton.disabled = false;
+          backupButton.querySelector('span').textContent = 'Tải bản sao lưu';
+        }
+      }
+
+      function openFiles(fileList) {
+        const files = Array.from(fileList || []);
+        if (!files.length) return;
+        if (!selectedMode) {
+          notify('Hãy chọn Đọc PDF hoặc Trình chiếu ảnh trước.');
+          return;
+        }
+        const pdf = files.find(file => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'));
+        const imageFiles = files.filter(file => file.type.startsWith('image/'));
+        if (selectedMode === 'pdf' && pdf) {
+          clearDocument();
+          sourceFiles = [pdf];
+          openPdf(pdf);
+        } else if (selectedMode === 'images' && imageFiles.length) {
+          clearDocument();
+          openImages(imageFiles);
+        } else {
+          notify(selectedMode === 'pdf' ? 'Chế độ này chỉ nhận tệp PDF.' : 'Chế độ này chỉ nhận tệp ảnh.');
+        }
+        fileInput.value = '';
+      }
+
+      document.getElementById('choosePdfButton').addEventListener('click', () => chooseMode('pdf'));
+      document.getElementById('chooseSlidesButton').addEventListener('click', () => chooseMode('images'));
+      document.getElementById('openButton').addEventListener('click', () => fileInput.click());
+      addSlideButton.addEventListener('click', () => {
+        if (images.length >= 100) {
+          notify('Trình chiếu đã đạt giới hạn 100 ảnh.');
+          return;
+        }
+        addImagesInput.click();
+      });
+      addImagesInput.addEventListener('change', event => {
+        const files = Array.from(event.target.files || []).filter(file => file.type.startsWith('image/'));
+        if (files.length) addImages(files);
+        else if (event.target.files?.length) notify('Chỉ hỗ trợ tệp ảnh trong trình chiếu.');
+        addImagesInput.value = '';
+      });
+      document.getElementById('emptyOpenButton').addEventListener('click', () => fileInput.click());
+      document.getElementById('modeButton').addEventListener('click', () => {
+        selectedMode = null;
+        clearDocument();
+      });
+      document.getElementById('backupButton').addEventListener('click', downloadBackup);
+      fileInput.addEventListener('change', event => openFiles(event.target.files));
+      presentButton.addEventListener('click', startPresentation);
+
+      ['dragenter', 'dragover'].forEach(type => stage.addEventListener(type, event => {
+        event.preventDefault();
+        stage.classList.add('dragging');
+      }));
+      ['dragleave', 'drop'].forEach(type => stage.addEventListener(type, event => {
+        event.preventDefault();
+        stage.classList.remove('dragging');
+      }));
+      stage.addEventListener('drop', event => openFiles(event.dataTransfer.files));
+      document.addEventListener('dragover', event => event.preventDefault());
+      document.addEventListener('drop', event => event.preventDefault());
+
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') {
+          if (app.classList.contains('presentation')) exitPresentation();
+          return;
+        }
+        if (event.target.matches('input, button, textarea, select')) return;
+        if (event.key === 'ArrowRight') {
+          if (images.length) showSlide(slideIndex + 1);
+          else if (pdfDocument) renderPdfPage(pdfPage + 1);
+        } else if (event.key === 'ArrowLeft') {
+          if (images.length) showSlide(slideIndex - 1);
+          else if (pdfDocument) renderPdfPage(pdfPage - 1);
+        } else if (event.key.toLowerCase() === 'f') {
+          if (images.length) startPresentation();
+          else if (pdfDocument) app.requestFullscreen?.().catch(() => {});
+        }
+      });
+      document.addEventListener('fullscreenchange', () => {
+        if (!document.fullscreenElement) app.classList.remove('presentation');
+      });
+      window.addEventListener('resize', () => {
+        if (pdfDocument) renderPdfPage(pdfPage);
+      });
+    })();
+  </script>
+</body>
+</html>
